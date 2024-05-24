@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Header from "./components/header";
 
 export default function Home() {
@@ -8,6 +8,7 @@ export default function Home() {
   const [alert, setAlert] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingaction, setLoadingaction] = useState(false);
   const [dropdown, setDropdown] = useState([]);
 
   useEffect(() => {
@@ -18,7 +19,7 @@ export default function Home() {
           const data = await response.json();
           setProducts(data.products);
         } else {
-          console.log('Failed to fetch products');
+          console.error('Failed to fetch products');
         }
       } catch (error) {
         console.error('Error fetching products:', error);
@@ -28,6 +29,53 @@ export default function Home() {
     fetchProducts();
   }, []);
 
+  const handleQuantityUpdate = async (action, product) => {
+    setLoadingaction(true);
+    
+    try {
+      let newQuantity;
+      if (action === "plus") {
+        newQuantity = parseInt(product.quantity) + 1;
+      } else if (action === "minus" && product.quantity > 0) {
+        newQuantity = parseInt(product.quantity) - 1;
+      } else {
+        newQuantity = parseInt(product.quantity);
+      }
+  
+      // Update quantity in products state
+      setProducts(prevProducts => prevProducts.map(p => {
+        if (p.productName === product.productName) {
+          return { ...p, quantity: newQuantity };
+        }
+        return p;
+      }));
+  
+      // Update quantity in dropdown state
+      setDropdown(prevDropdown => prevDropdown.map(item => {
+        if (item.productName === product.productName) {
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      }));
+  
+      const response = await fetch('/api/action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action, productName: product.productName, initialQuantity: product.quantity }),
+      });
+    
+      if (!response.ok) {
+        console.error('Failed to update quantity');
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+    } finally {
+      setLoadingaction(false);
+    }
+  };
+  
   const addProduct = async (e) => {
     e.preventDefault();
 
@@ -36,24 +84,42 @@ export default function Home() {
       return;
     }
 
+    // Check if a product with the same name already exists
+    const existingProduct = products.find(product => product.productName === productForm.productName);
+    if (existingProduct) {
+      setAlert("A product with the same name already exists");
+      return;
+    }
+
     try {
       const response = await fetch('/api/product', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(productForm)
+        body: JSON.stringify(productForm),
       });
 
       if (response.ok) {
         console.log('Product added successfully');
         setAlert("Your product has been added");
         setProductForm({});
+
+        const productListResponse = await fetch('/api/product');
+        if (productListResponse.ok) {
+          const data = await productListResponse.json();
+          setProducts(data.products);
+        } else {
+          console.error('Failed to fetch products');
+        }
       } else {
-        console.log('Error adding product');
+        const errorData = await response.json();
+        console.error('Error adding product:', errorData.message);
+        setAlert(`Error: ${errorData.message}`);
       }
     } catch (error) {
       console.error('Error:', error);
+      setAlert('An error occurred while adding the product.');
     }
   };
 
@@ -65,38 +131,48 @@ export default function Home() {
   };
 
   const onDropdownEdit = async (e) => {
-    try {
-      setQuery(e.target.value);
-      if (!loading) {
-        const response = await fetch('/api/search?query=' + query);
+    let value = e.target.value;
+    setQuery(value);
+    if (value.length > 3) {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/search?query=' + value);
         if (response.ok) {
           const data = await response.json();
           setDropdown(data.products);
         } else {
-          console.log('Failed to fetch products');
+          console.error('Failed to fetch products');
         }
+      } catch (error) {
+        console.error('Error fetching products:', error);
       }
       setLoading(false);
-    } catch (error) {
-      console.error('Error fetching products:', error);
+    } else {
+      setDropdown([]);
     }
   };
+
 
   return (
     <>
       <Header />
       <div className="container mx-auto p-4">
-        <div className='text-green-500 text-center'>{alert}</div>
+        <div className="text-center mb-4">
+          <span className={`text-green-500 ${alert ? 'block' : 'hidden'}`}>{alert}</span>
+        </div>
         <h1 className="text-3xl font-bold mb-4">Search a Product</h1>
-        <div className="flex items-center mb-4">
-          <input
+        <div className="flex items-center mb-2">
+          <input onBlur={() => (setDropdown([]))}
             onChange={onDropdownEdit}
             type="text"
             className="border border-gray-300 px-4 py-2 mr-2 w-full text-black"
             placeholder="Search..."
           />
 
-          <select className="border border-gray-300 px-4 py-2">
+          <select
+            className="border border-gray-300 px-4 py-2 text-black"
+            style={{ backgroundColor: '#2877ff', color: 'white' }}
+          >
             <option value="">All Categories</option>
             <option value="electronics">Electronics</option>
             <option value="clothing">Clothing</option>
@@ -104,21 +180,42 @@ export default function Home() {
           </select>
         </div>
         {loading && (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" className="animate-spin h-5 w-5 mr-3 inline-block">
-            <circle cx="50" cy="50" fill="none" stroke="#000" strokeWidth="8" r="35" strokeDasharray="164.93361431346415 56.97787143782138">
-              <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="0.6944444444444444s" keyTimes="0;1" values="0 50 50;360 50 50"></animateTransform>
+          <svg width="30" height="30" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor">
+            <circle cx="50" cy="50" r="40" strokeWidth="10" strokeLinecap="round">
+              <animate attributeName="stroke-dashoffset" values="0;502" dur="2s" repeatCount="indefinite" />
+              <animate attributeName="stroke-dasharray" values="150.6 100.4;1 250" dur="2s" repeatCount="indefinite" />
             </circle>
           </svg>
         )}
-      {dropdown.map(item => {
-  return (
-    <div key={item.productName} className="container flex justify-between bg-green-50 my-3">
-      <span className="productName text-black">{item.productName}</span>
-      <span className="quantity text-black">{item.quantity}</span>
-      <span className="price text-black">{item.price}</span>
-    </div>
-  );
-})}
+        <div className="dropcontainer absolute w-[73vw] border border-gray-300 bg-gray-50 rounded-md" style={{ backgroundColor: 'grey' }}>
+          {dropdown.map(item => {
+            return (
+              <div key={item._id} className="container flex justify-between p-2 my-1 text-white gap-12 border-b-2">
+                <span className="productName">{item.productName} ({item.quantity} Price of this item ₹{item.price})</span>
+                <div className="mx-5">
+                <button
+  onClick={() => handleQuantityUpdate("minus", item)}
+  disabled={loadingaction || item.quantity <= 0} // Disable if quantity is 0 or less
+  className={`subtract cursor-pointer p-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 ${loadingaction || item.quantity <= 0 ? 'disabled:bg-blue-200' : ''}`}
+>
+  -
+</button>
+<span className="quantity mx-4">{item.quantity}</span>
+<button
+  onClick={() => handleQuantityUpdate("plus", item)}
+  disabled={loadingaction}
+  className={`add cursor-pointer p-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 ${loadingaction ? 'disabled:bg-blue-200' : ''}`}
+>
+  +
+</button>
+
+
+
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
       </div>
       <div className="container mx-auto p-4">
@@ -127,7 +224,8 @@ export default function Home() {
           <div className="mb-4">
             <label className="block mb-2">Product Name:</label>
             <input
-              value={productForm?.productName || ""}
+              style={{ color: 'black' }}
+              value={productForm.productName || ""}
               name="productName"
               onChange={handleChange}
               type="text"
@@ -138,7 +236,8 @@ export default function Home() {
           <div className="mb-4">
             <label className="block mb-2">Quantity:</label>
             <input
-              value={productForm?.quantity || ""}
+              style={{ color: 'black' }}
+              value={productForm.quantity || ""}
               name="quantity"
               onChange={handleChange}
               type="number"
@@ -149,7 +248,8 @@ export default function Home() {
           <div className="mb-4">
             <label className="block mb-2">Price:</label>
             <input
-              value={productForm?.price || ""}
+              style={{ color: 'black' }}
+              value={productForm.price || ""}
               name="price"
               onChange={handleChange}
               type="number"
@@ -173,13 +273,13 @@ export default function Home() {
             </tr>
           </thead>
           <tbody>
-            {products.map(product => (
-              <tr key={product.slug}>
+            {products.map(product => {
+              return <tr key={product.productName}>
                 <td className="border px-4 py-2">{product.productName}</td>
                 <td className="border px-4 py-2">{product.quantity}</td>
-                <td className="border px-4 py-2">€{product.price}</td>
+                <td className="border px-4 py-2">₹{product.price}</td>
               </tr>
-            ))}
+            })}
           </tbody>
         </table>
       </div>
