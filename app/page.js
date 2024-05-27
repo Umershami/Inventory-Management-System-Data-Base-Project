@@ -7,6 +7,7 @@ export default function Home() {
   const [productForm, setProductForm] = useState({});
   const [alert, setAlert] = useState('');
   const [alertd, setAlertd] = useState('');
+  const [stockquantity, setStockquantity] = useState('')
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingaction, setLoadingaction] = useState(false);
@@ -31,12 +32,20 @@ export default function Home() {
 
     fetchProducts();
   }, []);
-  const handleDelete = async (productName) => {
+  
+   const handleDelete = async (productName) => {
     if (!productName) {
       setError('Product name is required');
       return;
     }
-  
+
+    const product = products.find((p) => p.productName === productName);
+    if (product && product.quantity > 0) {
+      setError('Product quantity is greater than 0, cannot delete.');
+      setStockquantity("Cannot be deleted. Product is in stock. ")
+      return;
+    }
+
     try {
       const response = await fetch(`/api/delete`, {
         method: 'DELETE',
@@ -45,22 +54,21 @@ export default function Home() {
         },
         body: JSON.stringify({ productName }),
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-  
+
       const data = await response.json();
       console.log(data);
-  
+
       if (data.success) {
         setProducts((prevProducts) =>
           prevProducts.filter((product) => product.productName !== productName)
-        
         );
         console.log('Product deleted successfully');
         setAlertd('Your product has been deleted');
-        setSuccess(true); // Set success state to true
+        setSuccess(true);
       } else {
         throw new Error(data.message || 'Failed to delete product');
       }
@@ -71,7 +79,7 @@ export default function Home() {
       setLoading(false);
     }
   };
-    
+
   
 const handleQuantityUpdate = async (action, product) => {
     setLoadingaction(true);
@@ -213,8 +221,8 @@ const handleQuantityUpdate = async (action, product) => {
       <Header />
       <div className="container mx-auto p-4">
         <div className="text-center mb-4">
-        <span className={`text-red-500 ${alertd ? 'block': 'hidden'}`}>{alertd}</span>
-          <span className={`text-green-500 ${alert ? 'block' : 'hidden'}`}>{alert}</span>
+        <span className={`text-red-700 font-bold text-2xl italic ${alertd ? 'block': 'hidden'}`}>{alertd}</span>
+          <span className={`text-green-700 font-bold text-2xl italic ${alert ? 'block' : 'hidden'}`}>{alert}</span>
         </div>
         <h1 className="text-3xl font-bold mb-4">Search a Product</h1>
         <div className="flex items-center mb-2">
@@ -372,6 +380,8 @@ const handleQuantityUpdate = async (action, product) => {
       </div>
       <div className="container mx-auto p-4 mt-4">
         <h1 className="text-3xl font-bold mb-4">Display Current Stock</h1>
+        <span className={`text-red-700 font-bold text-2xl italic ${stockquantity ? 'block': 'hidden'}`}>{stockquantity}</span>
+
         <table className="table-auto w-full">
           <thead>
             <tr>
