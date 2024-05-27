@@ -4,17 +4,17 @@ const Header = () => {
   return (
     <header className="text-gray-600 body-font">
       <div className="container mx-auto flex flex-wrap p-5 flex-col md:flex-row items-center">
-        <a className="flex title-font font-medium items-center text-gray-900 mb-4 md:mb-0">
+        <a href="#" className="flex title-font font-medium items-center text-gray-900 mb-4 md:mb-0">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" className="w-10 h-10 text-white p-2 bg-indigo-500 rounded-full" viewBox="0 0 24 24">
             <path d="M12 2L2 7l8 3-10 5L12 2zM2 17l8-12 8 12-8 3-8-3zM2 12l8-5 8 5-8 3-8-3z"></path>
           </svg>
-          <span className="ml-3 text-xl">Invenory Management system</span>
+          <span className="ml-3 text-xl">Inventory Management System</span>
         </a>
         <nav className="md:ml-auto flex flex-wrap items-center text-base justify-center">
-          <a className="mr-5 hover:text-gray-900">First Link</a>
-          <a className="mr-5 hover:text-gray-900">Second Link</a>
-          <a className="mr-5 hover:text-gray-900">Third Link</a>
-          <a className="mr-5 hover:text-gray-900">Fourth Link</a>
+          <a href="#" className="mr-5 hover:text-gray-900 transition duration-500 ease-in-out transform hover:scale-110">First Link</a>
+          <a href="#" className="mr-5 hover:text-gray-900 transition duration-500 ease-in-out transform hover:scale-110">Second Link</a>
+          <a href="#" className="mr-5 hover:text-gray-900 transition duration-500 ease-in-out transform hover:scale-110">Third Link</a>
+          <a href="#" className="mr-5 hover:text-gray-900 transition duration-500 ease-in-out transform hover:scale-110">Fourth Link</a>
         </nav>
         {/* <button className="inline-flex items-center bg-gray-100 border-0 py-1 px-3 focus:outline-none hover:bg-gray-200 rounded text-base mt-4 md:mt-0">Button
           <svg fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" className="w-4 h-4 ml-1" viewBox="0 0 24 24">
